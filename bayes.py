@@ -743,6 +743,33 @@ def pymoo(lb, ub, n_var, y_exp_norm, reg, scaler):
     print(f"Best point at {best_ln} with score  {res.F}")
     return res.X, best_ln, best_norm, sigma
 
+def plot_corner(sub_path, chain, ub_ln, lb_ln):
+    flat_chain = flatten(chain)
+    flat_chain_trans = (flat_chain * (ub_ln-lb_ln) + lb_ln)
+    flat_chain_actual = numpy.exp(flat_chain_trans)
+    flat_chain_actual[:,-1] = numpy.log10(flat_chain_actual[:,-1])
+    flat_chain_actual[:,0] = flat_chain_actual[:,0] * 1e3
+    label = [r'$R_\mathrm{s} [\Omega \mathrm{cm^2}]$', r'$R_\mathrm{sh} [\mathrm{k}\Omega \mathrm{cm^2}]$' ,r'$n_\mathrm{id}$' , r'$\log(J_{0} \mathrm{[mA /cm^2 ]})$']
+    fig = corner.corner(
+        flat_chain_actual,
+        labels = label,
+        label_kwargs={"fontsize": 20},
+        quantiles=(0.05, 0.5, 0.95),
+        show_titles=True,
+        title_kwargs={"fontsize": 10},
+        bins=30,
+        plot_contours = True,
+        range=new_range(flat_chain_actual).T,
+        color = "#00316E",
+        use_math_text=True,
+        max_n_ticks = 4,
+        title_fmt=".3f"
+    )
+    fig.subplots_adjust(right=1.6,top=1.6)
+    for ax in fig.get_axes():
+        ax.tick_params(axis='both', labelsize=20)
+    plt.savefig(sub_path/("corner.pdf"),dpi=300,pad_inches=0.2,bbox_inches='tight')
+plt.show()
 
 def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
     identity = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -841,23 +868,7 @@ def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
     ub_ln = numpy.log(ub)
     lb_ln = numpy.log(lb)
     
-    flat_chain = flatten(chain)
-    flat_chain_trans = (flat_chain * (ub_ln-lb_ln) + lb_ln)
-
-    label = [r'$\mu_{abs}$', r'$\tau_{srh-abs}$' ,r'$EA_{etl}$' , r'$\mu_{etl}$' , r'$\tau_{srh-etl-int}$' ,r'$EA_{htl}$', r'$\mu_{htl}$' ,r'$\tau_{srh-htl-int}$'],
-    #label = [r'$R_{s}$', r'$R_{sh}$' ,r'$n_{id}$' , r'$J_{0}$']
-
-    fig = corner.corner(
-        flat_chain_trans,
-        labels = label,
-        quantiles=(0.05, 0.5, 0.95),
-        show_titles=True,
-        bins=20,
-        range=new_range(flat_chain_trans).T,
-        use_math_text=True,
-        title_fmt=".2g",)
-    plt.savefig(Path(sub_path)/('corner.png'))
-    plt.show()
+    plot_corner(sub_path, chain, ub_ln,lb_ln)
     
 
 if __name__ == "__main__":
