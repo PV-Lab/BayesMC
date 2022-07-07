@@ -7,8 +7,8 @@ nn_trained = 'no'
 
 dataset = Path("./Dataset/one_dionde_4_temp_200000.h5")
 exp_path = Path("./Experimental_data/one_dionde_4_temp_781.h5")
-sim_name = 'on'
-exp = 'one_dionde_4_temp_781'
+sim_name = 'one_diode_781'
+exp = 'one'
 if nn_trained == 'no':
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     exp = 'one'
