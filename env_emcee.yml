@@ -1,0 +1,16 @@
+name: emcee
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pymoo
+  - tensorflow
+  - addict
+  - emcee
+  - python
+  - corner
+  - joblib
+
+  
+  
+
