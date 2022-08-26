@@ -204,6 +204,10 @@ def plot_sim(y, dir,fname):
     fig.savefig(dir/fname)
 plt.show()    
 
+@tf.function()
+def log_mse(y_true, y_pred):
+    return tf.math.log(tf.keras.losses.MSE(y_true, y_pred))
+
 def network(x, y, training_folder, training_name):
     '''
     netwrok : NN model used for training surrogate model
