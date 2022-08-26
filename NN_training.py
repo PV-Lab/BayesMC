@@ -292,7 +292,6 @@ def network(x, y, training_folder, training_name):
     
     reg_name = Path(training_folder)/("%s_trained_model.h5" % training_name)
     reg.save(reg_name)
-    reg.save(Path(training_folder)/("model" ))
     return reg, reg_name, X_test, Y_test, X_train, Y_train
  
     
