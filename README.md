@@ -1,4 +1,4 @@
-# emceebayes
+# BayesMC:Parameter estimation using Bayesian inference with Markov Chain Monte Carlo
 Bayesian parameter estimation with MCMC.
 
 The python environment needed to run this code can be created using "env_emcee3.yml"
