@@ -269,6 +269,7 @@ def network(x, y, training_folder, training_name):
 
         
     lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
+    reduce_lr = ReduceLROnPlateau(monitor='val_log_mse', factor=0.50, patience=50, verbose=1, mode='min', min_delta=0.001, cooldown=0, min_lr=1e-5)
   
 
     log_folder = Path(training_folder)/training_name 
@@ -282,11 +283,11 @@ def network(x, y, training_folder, training_name):
     reg.summary()
     
 
-    es = EarlyStopping(monitor='val_loss', min_delta=5e-8, mode='min', verbose=1, patience=500, restore_best_weights=True)
+    es = EarlyStopping(monitor='val_loss', min_delta=1e-5, mode='min', verbose=1, patience=500, restore_best_weights=True)
 
     reg.compile(loss='mse',optimizer='adam', metrics=['mae'])
     reg.fit(X_train,Y_train,shuffle=False, batch_size=512, epochs = 10000,
-                validation_split=0.2,  callbacks=[es, tf_callbacks])
+                validation_split=0.2,  callbacks=[es, tf_callbacks, reduce_lr])
     
     
     reg_name = Path(training_folder)/("%s_trained_model.h5" % training_name)
