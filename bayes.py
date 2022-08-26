@@ -28,6 +28,7 @@ import emcee.autocorr as autocorr
 import pandas
 import datetime
 import corner
+from NN_training import log_mse
 
 def new_range(flat_chain):
     '''
@@ -406,15 +407,16 @@ def montecarlo(best_scaled, log_probability_vec, y_exp_norm,sigma,reg, scaler, l
     gamma0 = 2.38/ numpy.sqrt(2 * ndim)
 
     start = numpy.array(best_scaled) * numpy.random.normal(1.0, 1e-2, (nwalkers, ndim))
-    #start = numpy.random.normal(1.0, 1e-3, (nwalkers, ndim))
+    start = numpy.random.normal(1.0, 1e-6, (nwalkers, ndim))
     start = numpy.clip(start, 0, 1)
+    start_random = numpy.clip(start_random, 0, 1)
 
     sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability_vec, vectorize=True, 
                                     args=(y_exp_norm, sigma,reg, scaler, lb, ub),
                                     moves=[(de_snooker.DESnookerMove(), 0.1),
                                         (de.DEMove(), 0.9*0.9),
                                         (de.DEMove(gamma0), 0.9*0.1),])
-    return sampler, start
+    return sampler, start, start_random
 
 
 def plot_best(best_norm, y_exp_norm, reg, sub_path):
@@ -785,7 +787,7 @@ def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
     print(results.filename)
     
     # load trained regression model
-    reg = tf.keras.models.load_model(reg_path)
+    reg = tf.keras.models.load_model(reg_path, custom_objects={'log_mse':log_mse})
 
     # load upper bound, lower bound and min max of different experiments
     if exp == 'both':
@@ -849,12 +851,12 @@ def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
     plot_best(best_norm, y_exp_norm, reg, sub_path)
 
     # run auto high probility relocation step
-    sampler, start = montecarlo(best_scaled, log_probability_vec, y_exp_norm, sigma, reg, scaler, lb, ub)
+    sampler, start, start_random = montecarlo(best_scaled, log_probability_vec, y_exp_norm, sigma, reg, scaler, lb, ub)
     print(start.shape)
     auto_state, auto_chain, auto_probability = auto_high_probability(sampler, start)
     results.root.walkers_start = auto_state.coords
     results.save()
-    #auto_state = emcee.state.State(start)
+    #auto_state = emcee.state.State(start_random)
 
     # plot the predicted y on top of the experimental data for the starting point of each walker
     plot_start(auto_state, y_exp_norm, reg, scaler,lb, ub, sub_path, results)
