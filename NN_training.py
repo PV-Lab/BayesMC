@@ -285,7 +285,7 @@ def network(x, y, training_folder, training_name):
 
     es = EarlyStopping(monitor='val_loss', min_delta=1e-5, mode='min', verbose=1, patience=500, restore_best_weights=True)
 
-    reg.compile(loss='mae',optimizer='adam', metrics=['log_mse'])
+    reg.compile(loss='mae',optimizer='adam', metrics=[log_mse])
     reg.fit(X_train,Y_train,shuffle=False, batch_size=192, epochs = 10000,
                 validation_split=0.05,  callbacks=[es, tf_callbacks, reduce_lr])
     
