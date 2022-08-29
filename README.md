@@ -2,12 +2,12 @@
 
 
 # File download 
-1. Download **Dataset** and **Results** directory from https://osf.io/jcqke/?view_only=6c63f45e6097491e9625688aa816b794.
-2. Put the two folders inside the directory where the rest of the code it. Code won't run until you download this two folder
+1. Clone the code from GitHub
+2. Download **Dataset** and **Results** directory from https://osf.io/jcqke/?view_only=6c63f45e6097491e9625688aa816b794.
+3. Put the two folders inside the directory where the rest of the code is. **Code won't run until you download this two folder and put then inside the directory**
 
 Example: 
 If **BayesMC** is the main directory where you want to put everything, then **BayesMC** should have the following files/Folders
-
 1. Dataset
 2. Experimental_data
 3. Results
@@ -20,7 +20,7 @@ If **BayesMC** is the main directory where you want to put everything, then **Ba
 
 # How to run and save results
 
-The code runs from **run.py** and saves all results from the current run in a subfolder with a time stamp inside the **Results** folder.
+The code runs from **run.py** and saves all results from the current run in a subfolder with a time stamp inside the **Results** folder. All data is aved and graphs corner plot are generated automatically.
 During every run the following files/folders are generated in a :
 1. "**_timestamp__simname_**_trained_model.h5" stores the weights and biases trained NN model.
 2. "**_timestamp__simname_**_train_test.h5" stores the data used for training and testing the NN netwrok.
