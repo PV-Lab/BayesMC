@@ -11,7 +11,7 @@ If **BayesMC** is the main directory where you want to put everything, then **Ba
 1. Dataset
 2. Experimental_data
 3. Results
-4. batch.sh (needed for running it on MIT supercloud)
+4. submit.sh (needed for running it on MIT supercloud)
 5. bayes.py
 6. de.py
 7. de_snooker.py
@@ -48,29 +48,32 @@ It is possible to run the code without training the NN surrogae model. A pre-tra
 # Instruction to run it on the MIT Supercloud
 1. Transfer all the files to their directory. **You should not be logged into your MIT supercloud account to do this. Just do it from your terminal window.** 
 [1. Dataset
-    2. Experimental_data
-    3. Results
-    4. bayes.py
-    5. de.py
-    6. de_snooker.py
-    7. h5.py
-    8. NN_training.py
-    9. run.py]
-2. syntax to transfer your code : (scp -r **Directory_where_your_code is**/BayesMC **Your_username**@txe1-login.mit.edu:/home/gridsan/**Your_username**/
-3. SSH into your supercloud aacount.
-4. Navigate to your **BayesMC** directory
-5. **To run interactive mode** (if you close the terminal window the code stops)\
+2. Experimental_data
+3. Results
+4. submit.sh (needed for running it on MIT supercloud)
+5. bayes.py
+6. de.py
+7. de_snooker.py
+8. h5.py
+9. NN_training.py
+10. run.py]
+2. Make sure the BayesMC directory has all the RWX permissions. (ls -l will show the permissions each directory has). If not then use **chmod a+rwx BayesMC**. 
+3. Also make sure the **Results** also has all the permissions. Use **chmod a+rwx Results** to give permission.
+4. syntax to transfer your code : (scp -r **Directory_where_your_code is**/BayesMC **Your_username**@txe1-login.mit.edu:/home/gridsan/**Your_username**/
+5. SSH into your supercloud aacount.
+6. Navigate to your **BayesMC** directory
+7. **To run interactive mode** (if you close the terminal window the code stops)\
     (i) Load environment **module load anaconda/2021a**\
     (ii) Request resources : **LLsub -i -s 20 -g volta:1**\
     (iii) To run : **python run.py**\
     (iv) You can see the progress directly on the terminal window.
 
-6. **To run in batch mode** (even if you close the terminal the code still runs)\
+8. **To run in batch mode** (even if you close the terminal the code still runs)\
      (i) To run : **sbatch batch.sh**\
      (ii) All the commands to load environment, request resources are mentioned in the batch file **batch.sh**\. A **JOBID**   will be assigned to the submitted job and printed on the terminal window. (For eg. Submitted batch job **19733850**; where **19733850** is the **JOBID**)\
      (iii) Use **LLstat** to see the status of your job. If ST is R then the job is running.\
      (iv) Use **tail -f batch.sh.log-JOBID** (enter your **JOBID**) to see the progress printed on terminal window.\
      (v) To stop printing the progress on the screen : **Ctrl + C**.\
      (vi) You can use LLStat to see if the job is still running or it has finished.\
-7. To download the resutls :\
+9. To download the resutls :\
 scp -r **Your_username**@txe1-login.mit.edu:/home/gridsan/**Your_username**/BayesMC/Results/**Name_of_your_results_folder** **Directory_where_your_code_is**/BayesMC/Results
