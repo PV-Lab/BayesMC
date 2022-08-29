@@ -18,8 +18,11 @@ If **BayesMC** is the main directory where you want to put everything, then **Ba
 8. NN_training.py
 9. run.py
 
-# How to run and save results
+# Code environment
+To run the code one need to create a python environment using the **env_emcee.yml** file.
 
+
+# How to run and save results
 The code runs from **run.py** and saves all results from the current run in a subfolder with a time stamp inside the **Results** folder. All data is aved and graphs corner plot are generated automatically.
 During every run the following files/folders are generated in a :
 1. "**_timestamp__simname_**_trained_model.h5" stores the weights and biases trained NN model.
@@ -41,5 +44,33 @@ It is possible to run the code without training the NN surrogae model. A pre-tra
     (c) A scaler file **20220826-040829scaler.joblib** containing the scalers used for data transformation, required to inverse transform the data at the end of the run.
 3. Open the **run.py** file in an editor and change **_nn_trained_** to **yes**. The _elif_ statement will be executed. The Paths to the files for this have already been set to the three files mentioned above for the code to run without training the NN.
 
+# Instruction to run it on the MIT Supercloud
+1. Create a directory **BayesMC** inside your home directory on MIT Supercloud. Within that directory create subdirectories **Datset** and **Results**
+2. Transfer all the files to their directory. **You should not be logged into your MIT supercloud account to do this. Just do it from your terminal window.** 
+[1. Dataset
+    2. Experimental_data
+    3. Results
+    4. bayes.py
+    5. de.py
+    6. de_snooker.py
+    7. h5.py
+    8. NN_training.py
+    9. run.py]
+3. syntax to transfer your code : (scp -r **Directory_where_your_code is**/BayesMC **Your_username**@txe1-login.mit.edu:/home/gridsan/**Your_username**/
+4. SSH into your supercloud aacount.
+5. Navigate to your **BayesMC** directory
+6. **To run interactive mode** (if you close the terminal window the code stops)\
+    (i) Load environment **module load anaconda/2021a**\
+    (ii) Request resources : **LLsub -i -s 20 -g volta:1**\
+    (iii) To run : **python run.py**\
+    (iv) You can see the progress directly on the terminal window.
 
-
+7. **To run in batch mode** (even if you close the terminal the code still runs)\
+     (i) To run : **sbatch batch.sh**\
+     (ii) All the commands to load environment, request resources are mentioned in the batch file **batch.sh**\. A **JOBID**   will be assigned to the submitted job and printed on the terminal window. (For eg. Submitted batch job **19733850**; where **19733850** is the **JOBID**)\
+     (iii) Use **LLstat** to see the status of your job. If ST is R then the job is running.\
+     (iv) Use **tail -f batch.sh.log-JOBID** (enter your **JOBID**) to see the progress printed on terminal window.\
+     (v) To stop printing the progress on the screen : **Ctrl + C**.\
+     (vi) You can use LLStat to see if the job is still running or it has finished.\
+8. To download the resutls :\
+scp -r **Your_username**@txe1-login.mit.edu:/home/gridsan/**Your_username**/BayesMC/Results/**Name_of_your_results_folder** **Directory_where_your_code_is**/BayesMC/Results
