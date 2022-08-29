@@ -47,16 +47,16 @@ It is possible to run the code without training the NN surrogae model. A pre-tra
 
 # Instruction to run it on the MIT Supercloud
 1. Transfer all the files to their directory. **You should not be logged into your MIT supercloud account to do this. Just do it from your terminal window.** 
-[1. Dataset
-2. Experimental_data
-3. Results
-4. submit.sh (needed for running it on MIT supercloud)
-5. bayes.py
-6. de.py
-7. de_snooker.py
-8. h5.py
-9. NN_training.py
-10. run.py]
+    [1. Dataset
+    2. Experimental_data
+    3. Results
+    4. submit.sh (needed for running it on MIT supercloud)
+    5. bayes.py
+    6. de.py
+    7. de_snooker.py
+    8. h5.py
+    9. NN_training.py
+    10. run.py]
 2. Make sure the BayesMC directory has all the RWX permissions. (ls -l will show the permissions each directory has). If not then use **chmod a+rwx BayesMC**. 
 3. Also make sure the **Results** also has all the permissions. Use **chmod a+rwx Results** to give permission.
 4. syntax to transfer your code : (scp -r **Directory_where_your_code is**/BayesMC **Your_username**@txe1-login.mit.edu:/home/gridsan/**Your_username**/
