@@ -407,7 +407,7 @@ def montecarlo(best_scaled, log_probability_vec, y_exp_norm,sigma,reg, scaler, l
     gamma0 = 2.38/ numpy.sqrt(2 * ndim)
 
     start = numpy.array(best_scaled) * numpy.random.normal(1.0, 1e-2, (nwalkers, ndim))
-    start_random = numpy.random.normal(1.0, 1e-6, (nwalkers, ndim))
+    start_random = numpy.random.rand((nwalkers, ndim))
     start = numpy.clip(start, 0, 1)
     start_random = numpy.clip(start_random, 0, 1)
 
