@@ -5,7 +5,7 @@ import datetime
 
 nn_trained = 'no'
 
-dataset = Path("./Dataset/one_dionde_4_temp_30000.h5")
+dataset = Path("./Dataset/one_diode_4_temp_30000.h5")
 exp_path = Path("./Experimental_data/one_diode_4_temp_781.h5")
 sim_name = 'one_diode'
 exp = 'one'
