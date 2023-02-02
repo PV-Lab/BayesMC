@@ -205,6 +205,7 @@ def plot_sim(y, dir,fname):
 plt.show()    
 
 @tf.function()
+# custom function for NN training
 def log_mse(y_true, y_pred):
     return tf.math.log(tf.keras.losses.MSE(y_true, y_pred))
 
@@ -344,11 +345,13 @@ def main(sim_name, timestamp, exp, dataset):
     # StandardScaler transform par_mat
     par_norm, scaler = par_fit_transform(par_mat)
     train_data.root.par_norm = par_norm
-    scaler_name = dir/(timestamp + "scaler.joblib")
+    scaler_name = dir/(timestamp + "_scaler.joblib")
     joblib.dump(scaler, scaler_name)  
     
     # train neural network
     reg, reg_name, x_test, y_test, x_train, y_train = network(par_norm, y_norm, dir, name)
+
+    # save training data
     train_data.root.X_test = x_test
     train_data.root.Y_test = y_test
     train_data.root.X_train = x_train

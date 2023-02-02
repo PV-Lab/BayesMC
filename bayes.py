@@ -80,9 +80,10 @@ def run_walkers(auto_state,sampler,data,cur_path):
         mother_prob = prob
         #print(f"step {step}")
 
-        if step and step % 1000 == 0:
-            
+        if step and step % 100 == 0:
             plot_mixing(chain,cur_path)                  # mixing graphs to check if the variables are converging or not
+
+        if step and step % 1000 == 0:
             burn = int(numpy.ceil(numpy.max(tau)) * 2)
            
             burn_chain = chain[:,:burn,:]
@@ -368,7 +369,7 @@ def addChain(*args):
 
 
 
-def montecarlo(best_scaled, log_probability_vec, y_exp_norm,sigma,reg, scaler, lb, ub ):
+def montecarlo(best_scaled, log_probability_vec, y_exp_norm,sigma,reg, scaler, lb, ub, nwalkers ):
     '''
     montecarlo : mcmc sampler
 
@@ -399,7 +400,6 @@ def montecarlo(best_scaled, log_probability_vec, y_exp_norm,sigma,reg, scaler, l
     lb = numpy.log(lb)
     ub = numpy.log(ub)
 
-    nwalkers = 512
     print(best_scaled.shape)
     ndim = len(best_scaled)
     print(nwalkers, ndim)
@@ -407,16 +407,16 @@ def montecarlo(best_scaled, log_probability_vec, y_exp_norm,sigma,reg, scaler, l
     gamma0 = 2.38/ numpy.sqrt(2 * ndim)
 
     start = numpy.array(best_scaled) * numpy.random.normal(1.0, 1e-2, (nwalkers, ndim))
-    start_random = numpy.random.rand((nwalkers, ndim))
+    #start_random = numpy.random.rand((nwalkers, ndim))
     start = numpy.clip(start, 0, 1)
-    start_random = numpy.clip(start_random, 0, 1)
+    #start_random = numpy.clip(start_random, 0, 1)
 
     sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability_vec, vectorize=True, 
                                     args=(y_exp_norm, sigma,reg, scaler, lb, ub),
                                     moves=[(de_snooker.DESnookerMove(), 0.1),
                                         (de.DEMove(), 0.9*0.9),
                                         (de.DEMove(gamma0), 0.9*0.1),])
-    return sampler, start, start_random
+    return sampler, start
 
 
 def plot_best(best_norm, y_exp_norm, reg, sub_path):
@@ -471,6 +471,67 @@ def save_best(train_path, best_scaled, best_ln):
     td.root.best_point_ln = best_ln
     td.root.best_point = numpy.exp(best_ln)
     td.save()
+
+def ln_pdf(Y, y_exp_norm, sigma):
+    '''
+    ln_pdf : calculates the  error between the predicted jv and the experimental data
+
+    Parameters 
+    ----------
+    y : jv predicted from theta
+    mu : normalized experimental data
+    sigma : gaussian error parameter
+
+    returns
+    -------
+    error : error between the jv predicted from theta and experimental data
+
+    '''
+    ln_pdf =  -0.5*numpy.sum(((Y-y_exp_norm)**2)/sigma**2 + numpy.log(2 * 3.14 * sigma**2) , axis = 1) #http://faraday.uwyo.edu/~admyers/ASTR5160/handouts/516025.pdf
+    #ln_pdf =  -0.5*numpy.sum(((Y-y_exp_norm)**2)/sigma**2 , axis = 1)
+    return ln_pdf
+
+def start_points(train_path, y_exp_norm, scalar, sigma, walkers, reg, sub_path):
+    td = h5.H5()
+    td.filename = train_path
+    td.load()
+
+    params = numpy.concatenate((td.root.X_train, td.root.X_test), axis = 0)
+    Y = numpy.concatenate((td.root.Y_train, td.root.Y_test), axis = 0)
+    params_ln = scalar.inverse_transform(params)
+
+
+    pdf = ln_pdf(Y, y_exp_norm,sigma)
+
+    args = numpy.argsort(-pdf)
+    ln_pdf_aranged = pdf[args]
+    params_ln_sort = params_ln[args,:]
+    starting_points_ln = params_ln_sort[0:walkers,:]
+    starting_points_actual = numpy.exp(starting_points_ln)
+    starting_points_norm = theta_transform(starting_points_ln, scalar)
+    #check(args, Y, reg, starting_points_norm, sub_path, y_exp_norm, starting_points_actual, ln_pdf_aranged)
+    return starting_points_norm, starting_points_ln, starting_points_actual, ln_pdf_aranged
+
+def check(args, Y, reg, starting_points_norm, path, y_exp_norm, starting_points_actual,ln_pdf_aranged):
+    c_start = Path(path)/("c_start")
+    if os.path.exists(c_start):
+        print("file already exists")
+    else:
+        os.mkdir(c_start)
+
+    y_pred = reg.predict(starting_points_norm)
+    Y_or = Y[args]
+
+    for i in range(len(args)):
+        plt.figure(figsize=[10,10])
+        plt.plot(Y_or[i,:], color='blue', label='original')
+        plt.plot(numpy.squeeze(y_exp_norm), linestyle = 'dotted', color='red', label="target")
+        plt.plot(y_pred[i,:], linestyle = 'dashed', color='green', label='pred')
+        plt.title(f"Parameters: {starting_points_actual[i,:]} with ln_pdf: {ln_pdf_aranged[i]}")
+        plt.legend()
+        fig_path = Path(c_start)/("prob_%i.png" %i)
+        plt.savefig(fig_path)
+        plt.close('all')
 
 def plot_sim(y, y_predict, dir, fname):
     '''
@@ -654,7 +715,7 @@ def log_probability_vec(theta,y_exp_norm,sigma, reg, scaler, lb, ub):
     theta_trans = numpy.array(theta) * (ub-lb) + lb    
     theta_norm = theta_transform(theta_trans, scaler)
     jv_predicted_from_theta = reg.predict(theta_norm)
-    errors = log_norm_pdf_vec(jv_predicted_from_theta, y_exp_norm, sigma)
+    errors = ln_pdf(jv_predicted_from_theta, y_exp_norm, sigma)
     return errors
 
 
@@ -680,7 +741,7 @@ def theta_transform(theta, scaler):
 
 
 
-def pymoo(lb, ub, n_var, y_exp_norm, reg, scaler):
+def pymoo(lb, ub, n_var, y_exp_norm, reg, scaler, sigma):
     
     '''
     pymoo : optimizer to find a good point
@@ -711,7 +772,7 @@ def pymoo(lb, ub, n_var, y_exp_norm, reg, scaler):
 
     termination = get_termination("n_gen", 1000)
     
-    sigma = 1e-3
+
     popsize = 200
     
     class MyProblem(Problem):
@@ -745,7 +806,7 @@ def pymoo(lb, ub, n_var, y_exp_norm, reg, scaler):
     print(f"Best point at {best_ln} with score  {res.F}")
     return res.X, best_ln, best_norm, sigma
 
-def plot_corner(sub_path, chain, ub_ln, lb_ln):
+def plot_corner_diode(sub_path, chain, ub_ln, lb_ln):
     flat_chain = flatten(chain)
     flat_chain_trans = (flat_chain * (ub_ln-lb_ln) + lb_ln)
     flat_chain_actual = numpy.exp(flat_chain_trans)
@@ -773,7 +834,53 @@ def plot_corner(sub_path, chain, ub_ln, lb_ln):
     plt.savefig(sub_path/("corner.pdf"),dpi=300,pad_inches=0.2,bbox_inches='tight')
 plt.show()
 
-def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
+def plot_corner(sub_path, chain, ub_ln, lb_ln):
+    flat_chain = flatten(chain)
+    flat_chain_trans = (flat_chain * (ub_ln-lb_ln) + lb_ln)
+    flat_chain_actual = numpy.exp(flat_chain_trans)
+    S_etl = 5e-7 /flat_chain_actual[:,4] #in cm/s
+    S_htl = 5e-7 /flat_chain_actual[:,-1] #in cm/s
+    chain_modified = flat_chain_actual
+    chain_modified[:,0] = numpy.log10(chain_modified[:,0] * 1e4) # abs mobility in cm2/Vs in natural log
+    chain_modified[:,3] = numpy.log10(chain_modified[:,3] * 1e4) # ETL mobility in cm2/Vs in natural log
+    chain_modified[:,6] = numpy.log10(chain_modified[:,6] * 1e4) # HTL mobility in cm2/Vs in natural log
+    chain_modified[:,1] = numpy.log10(chain_modified[:,1] * 1e4) # abs lifetime in natural log
+    chain_modified[:,2] = (3.83 - chain_modified[:,2]) * 1e3 # CB offset in meV; EAabs - EAetl
+    chain_modified[:,5] = (3.83 + 1.6 - chain_modified[:,5] - 3) * 1e3 # VB offset in meV; EAabs + Egabs - EAhtl - Eghtl
+    chain_modified[:,4] = S_etl
+    chain_modified[:,-1] = S_htl
+    #chain_modified_trans = numpy.log(chain_modified)
+    chain_modified_1 = chain_modified[:, (0,1,3,6)] #abs mobility, abs lifetime, ETL mobility, HTL, mobility
+    chain_modified_2 = chain_modified[:, (2,4,5,7)] #CB offset, S_ETL, VB offset, S_HTL
+    chain_modified_3 = chain_modified[:, 2:]
+
+
+    label = [r'$\mu_\mathrm{abs} \mathrm{[cm^2/Vs]}', r'$\tau_\mathrm{abs} \mathrm{[s]}', r'$\Delta E_\mathrm{C} \mathrm{[meV]}$', r'$log(\mu_{etl} \mathrm{[cm^2/Vs]})$', r'$S_\mathrm{etl} \mathrm{[cm/s]}$', r'$\Delta E_\mathrm{V} \mathrm{[meV]}$', r'$log(\mu_\mathrm{htl} \; \mathrm{[cm^2/Vs]})$', r'$S_\mathrm{htl} \mathrm{[cm/s]}$']
+
+
+    fig = corner.corner(
+        chain_modified,
+        labels = label,
+        label_kwargs={"fontsize": 25},
+        quantiles=(0.05, 0.5, 0.95),
+        show_titles=True,
+        title_kwargs={"fontsize": 16},
+        bins=30,
+        plot_contours = True,
+        range=new_range(chain_modified).T,
+        color = "#00316E",
+        use_math_text=True,
+        max_n_ticks = 4,
+        title_fmt=".2f"
+        )
+    fig.subplots_adjust(right=1.6,top=1.6)
+    for ax in fig.get_axes():
+        ax.tick_params(axis='both', labelsize=20)
+    plt.savefig(sub_path/("corner.pdf"),dpi=300,pad_inches=0.2,bbox_inches='tight')
+plt.show()
+
+
+def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp, walkers, sigma, sp):
     identity = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     sub_dir = identity + name + '_bayes'
     print(sub_dir)
@@ -783,6 +890,8 @@ def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
     results = h5.H5()
     results_name = sub_path/("%s.h5" % sub_dir)
     results.filename = results_name.as_posix() #the file where all your training related data is getting stored
+    results.root.walkers = walkers
+    results.root.sigma = sigma
     results.save()
     print(results.filename)
     
@@ -827,6 +936,7 @@ def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
         plt.show()
         results.root.y_exp = y_exp
     results.save()
+    
     # transform experimental data
     if exp == 'both':
         y_exp_1_norm = y_exp_transform(y_exp_1, y1_max, y1_min)
@@ -838,29 +948,96 @@ def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
         plt.plot(y_exp_norm)
     results.root.y_exp_norm = y_exp_norm
     results.save()
-    # run optimizer to find starting point
-    best_scaled, best_ln, best_norm, sigma = pymoo(lb, ub, n_var, y_exp_norm, reg, scaler)
-    best_actual = numpy.exp(best_ln)
-    print("best_point:", best_actual)
-    results.root.best.best_scaled = best_scaled
-    results.root.best.best_ln = best_ln
-    results.root.best.best_actual = best_actual
-    results.save()
 
-    # plot the y_predict at the best point and compare with experimental result
-    plot_best(best_norm, y_exp_norm, reg, sub_path)
+    if sp == 1 :
+        starting_points_norm, starting_points_ln, starting_points_actual, log_pdf = start_points(train_path, y_exp_norm, scaler, sigma, walkers-1, reg, sub_path)
+        
+        # run optimizer to find starting point
+        best_scaled, best_ln, best_norm, ln_prob = pymoo(lb, ub, n_var, y_exp_norm, reg, scaler, sigma)
+        best_actual = numpy.exp(best_ln)
+        print("best_point:", best_actual)
+        results.root.best.best_scaled = best_scaled
+        results.root.best.best_ln = best_ln
+        results.root.best.best_actual = best_actual
+        results.save()
 
-    # run auto high probility relocation step
-    sampler, start, start_random = montecarlo(best_scaled, log_probability_vec, y_exp_norm, sigma, reg, scaler, lb, ub)
-    print(start.shape)
-    auto_state, auto_chain, auto_probability = auto_high_probability(sampler, start)
-    results.root.walkers_start = auto_state.coords
-    results.save()
-    #auto_state = emcee.state.State(start_random)
+        #plot starting points
+        starting_points_norm = numpy.append(best_norm, starting_points_norm, axis = 0)
+        starting_points_ln = numpy.append(best_ln, starting_points_ln, axis = 0)
+        starting_points_actual = numpy.append(best_actual, starting_points_actual, axis  =0)
+        log_pdf = numpy.append(ln_prob, log_pdf, axis = 0)
 
-    # plot the predicted y on top of the experimental data for the starting point of each walker
-    plot_start(auto_state, y_exp_norm, reg, scaler,lb, ub, sub_path, results)
+        results.root.sp.starting_points_actual = starting_points_actual
+        results.root.sp.starting_points_ln_pdf = log_pdf
+        results.root.sp.starting_points_norm = starting_points_norm
+        results.root.sp.starting_points_ln = starting_points_ln
+        results.save()
+
+        auto_state = emcee.state.State(starting_points_norm)
+        plot_start(auto_state, y_exp_norm, reg, scaler,lb, ub, sub_path, results, log_pdf)
+
+        # plot the y_predict at the best point and compare with experimental result
+        plot_best(best_norm, y_exp_norm, reg, sub_path)
+
+
+    elif sp == 2:
+        # run optimizer to find starting point
+        best_scaled, best_ln, best_norm, ln_prob = pymoo(lb, ub, n_var, y_exp_norm, reg, scaler, sigma)
+        # plot the y_predict at the best point and compare with experimental result
+        plot_best(best_norm, y_exp_norm, reg, sub_path)
+
+        best_actual = numpy.exp(best_ln)
+        print("best_point:", best_actual)
+        results.root.best.best_scaled = best_scaled
+        results.root.best.best_ln = best_ln
+        results.root.best.best_actual = best_actual
+        results.save() 
+
+        # run auto high probility relocation step
+        sampler, start = montecarlo(best_scaled, log_probability_vec, y_exp_norm, sigma, reg, scaler, lb, ub, walkers)
+        print(start.shape)
+        auto_state, auto_chain, auto_probability = auto_high_probability(sampler, start)
+        results.root.sp.starting_points_norm = auto_state.coords
+        results.root.sp.starting_points_ln_pdf = auto_probability
+        results.save()
+
+        # plot the predicted y on top of the experimental data for the starting point of each walker
+        plot_start(auto_state, y_exp_norm, reg, scaler,lb, ub, sub_path, results)
     
+
+    elif sp == 3 : 
+        starting_points_norm, starting_points_ln, starting_points_actual, log_pdf = start_points(train_path, y_exp_norm, scaler, sigma, walkers/2, reg, sub_path)  
+        
+        # run optimizer to find starting point
+        best_scaled, best_ln, best_norm, ln_prob = pymoo(lb, ub, n_var, y_exp_norm, reg, scaler, sigma)
+        best_actual = numpy.exp(best_ln)
+        print("best_point:", best_actual)
+        results.root.best.best_scaled = best_scaled
+        results.root.best.best_ln = best_ln
+        results.root.best.best_actual = best_actual
+        results.save()
+
+        # run auto high probility relocation step
+        sampler, start = montecarlo(best_scaled, log_probability_vec, y_exp_norm, sigma, reg, scaler, lb, ub)
+        print(start.shape)
+        auto_state, auto_chain, auto_probability = auto_high_probability(sampler, start)
+        results.root.walkers_start = auto_state.coords
+        results.save()
+        
+        starting_points_half = auto_state.coords[walkers/2,:]
+        starting_points_norm = numpy.append(starting_points_half, starting_points_norm, axis = 0)
+        starting_points_ln_pdf = numpy.append(auto_probability[walkers/2], log_pdf, axis = 0)
+
+        results.root.sp.starting_points_ln_pdf = starting_points_ln_pdf
+        results.root.sp.starting_points_norm = starting_points_norm
+        results.save()
+
+        auto_state = emcee.state.State(starting_points_norm)
+        plot_start(auto_state, y_exp_norm, reg, scaler,lb, ub, sub_path, results, log_pdf)
+
+        # plot the y_predict at the best point and compare with experimental result
+        plot_best(best_norm, y_exp_norm, reg, sub_path)
+
 
     # run final bayes step
     chain, prob = run_walkers(auto_state,sampler, results, sub_path)
@@ -870,7 +1047,7 @@ def main(dir_path, name, reg_path, train_path, scaler_path,exp_path, exp):
     ub_ln = numpy.log(ub)
     lb_ln = numpy.log(lb)
     
-    plot_corner(sub_path, chain, ub_ln,lb_ln)
+    plot_corner_diode(sub_path, chain, ub_ln,lb_ln)
     
 
 if __name__ == "__main__":
